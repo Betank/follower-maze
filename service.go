@@ -4,18 +4,16 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strconv"
 	"strings"
 	"sync"
 )
 
-var mu sync.Mutex
+var messageProcessor *MessageProcessor
 var registry Registry
-var count int
-var messageStore = make(map[int][]byte)
 
 func main() {
 	registry = &clientReqistry{clients: make(map[string]*Client), followerMap: make(map[string][]string)}
+	messageProcessor = &MessageProcessor{messageQueue: make(map[int][]byte)}
 	eventsourceListener, err := net.Listen("tcp", ":9090")
 	if err != nil {
 		log.Fatal(err)
@@ -82,53 +80,8 @@ func chunk(input chan byte) {
 	for in := range input {
 		message = append(message, in)
 		if in == 10 {
-			processMessage(message)
+			messageProcessor.processMessage(message)
 			message = message[:0]
-		}
-	}
-}
-
-func processMessage(message []byte) {
-	mu.Lock()
-	defer mu.Unlock()
-	fragments := strings.Split(strings.Trim(string(message), "\r\n"), "|")
-	seq, err := strconv.Atoi(fragments[0])
-	if err != nil {
-		return
-	}
-	if seq == count+1 {
-		sendMessage(message, fragments)
-		count++
-		for {
-			if message, ok := messageStore[count+1]; ok {
-				fragments = strings.Split(strings.Trim(string(message), "\r\n"), "|")
-				sendMessage(message, fragments)
-				delete(messageStore, count+1)
-				count++
-			} else {
-				break
-			}
-		}
-	} else {
-		messageStore[seq] = append(messageStore[seq], message...)
-	}
-}
-
-func sendMessage(message []byte, fragments []string) {
-	if len(fragments) == 2 {
-		registry.sendMessageToAllClients(message)
-	} else if len(fragments) == 3 {
-		registry.sendMessageToFollower(fragments[2], message)
-	} else {
-		switch v := fragments[1]; v {
-		case "F":
-			registry.followClient(fragments[3], fragments[2])
-			registry.sendMessageToClient(fragments[3], message)
-		case "U":
-			registry.unfollowClient(fragments[3], fragments[2])
-		case "P":
-			registry.sendMessageToClient(fragments[3], message)
-
 		}
 	}
 }

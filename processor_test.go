@@ -5,7 +5,7 @@ import (
 )
 
 func TestProcessFollowMessageClient50(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message := []byte("1|F|60|50\r\n")
 
 	mockReg := &mockRegistry{
@@ -14,7 +14,7 @@ func TestProcessFollowMessageClient50(t *testing.T) {
 	}
 	registry = mockReg
 
-	processMessage(message)
+	messageProcessor.processMessage(message)
 
 	expectedCall := sendMessageCall{"50", []byte(message)}
 	expectedCall2 := followClientCall{"50", "60"}
@@ -24,7 +24,7 @@ func TestProcessFollowMessageClient50(t *testing.T) {
 }
 
 func TestProcessFollowMessageClient51(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message := []byte("1|F|60|51\r\n")
 
 	mockReg := &mockRegistry{
@@ -33,7 +33,7 @@ func TestProcessFollowMessageClient51(t *testing.T) {
 	}
 	registry = mockReg
 
-	processMessage(message)
+	messageProcessor.processMessage(message)
 
 	expectedCall := sendMessageCall{"51", []byte(message)}
 	expectedCall2 := followClientCall{"51", "60"}
@@ -43,7 +43,7 @@ func TestProcessFollowMessageClient51(t *testing.T) {
 }
 
 func TestProcessFollowMessageWithOrder(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message1 := []byte("1|F|60|50\r\n")
 	message2 := []byte("2|F|60|50\r\n")
 	message3 := []byte("3|F|60|50\r\n")
@@ -54,9 +54,9 @@ func TestProcessFollowMessageWithOrder(t *testing.T) {
 	}
 	registry = mockReg
 
-	processMessage(message3)
-	processMessage(message2)
-	processMessage(message1)
+	messageProcessor.processMessage(message3)
+	messageProcessor.processMessage(message2)
+	messageProcessor.processMessage(message1)
 
 	expectedCall1 := sendMessageCall{"50", []byte(message1)}
 	expectedCall2 := sendMessageCall{"50", []byte(message2)}
@@ -76,13 +76,13 @@ func TestProcessFollowMessageWithOrder(t *testing.T) {
 }
 
 func TestProcessBroadcastMessage(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message := []byte("1|B\r\n")
 
 	mockReg := &mockRegistry{sendMessageCalls: make([]sendMessageCall, 0)}
 	registry = mockReg
 
-	processMessage(message)
+	messageProcessor.processMessage(message)
 
 	if string(mockReg.sendMessageToAllCalls[0]) != string(message) {
 		t.Errorf("should call method with %v but called with %v", string(message), string(mockReg.sendMessageToAllCalls[0]))
@@ -90,13 +90,13 @@ func TestProcessBroadcastMessage(t *testing.T) {
 }
 
 func TestProcessStatusUpdateMessage(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message := []byte("1|S|50\r\n")
 
 	mockReg := &mockRegistry{sendMessageToFollowerCalls: make([]sendMessageCall, 0)}
 	registry = mockReg
 
-	processMessage(message)
+	messageProcessor.processMessage(message)
 
 	expectedCall := sendMessageCall{"50", []byte(message)}
 
@@ -104,7 +104,7 @@ func TestProcessStatusUpdateMessage(t *testing.T) {
 }
 
 func TestProcessUnfollowMessage(t *testing.T) {
-	count = 0
+	messageProcessor := &MessageProcessor{messageQueue: make(map[int][]byte)}
 	message := []byte("1|U|60|50\r\n")
 
 	mockReg := &mockRegistry{
@@ -112,7 +112,7 @@ func TestProcessUnfollowMessage(t *testing.T) {
 		unfollowClientCalls: make([]unfollowClientCall, 0)}
 	registry = mockReg
 
-	processMessage(message)
+	messageProcessor.processMessage(message)
 
 	expectedCall := unfollowClientCall{"50", "60"}
 
